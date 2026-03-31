@@ -1,72 +1,364 @@
-import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as plt
-from io import BytesIO
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Binay Hyundai - Spare Parts MIS Report</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Calibri', 'Arial', sans-serif;
+        }
 
-st.set_page_config(page_title="Binay Hyundai MIS", layout="wide")
+        body {
+            background: #e2e8f0;
+            margin: 0;
+            padding: 24px 16px;
+            display: flex;
+            justify-content: center;
+        }
 
-st.title("🚗 Binay Hyundai - All-in-One MIS Dashboard")
+        /* Excel-like container */
+        .excel-container {
+            max-width: 1400px;
+            width: 100%;
+            background: white;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
+            border-radius: 16px;
+            overflow-x: auto;
+            padding: 20px 24px 32px 24px;
+        }
 
-Upload file
+        /* header / title area */
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            border-bottom: 2px solid #2c3e66;
+            padding-bottom: 12px;
+            margin-bottom: 24px;
+        }
+        .dealership {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1e3a5f;
+            letter-spacing: -0.3px;
+        }
+        .date-time {
+            text-align: right;
+            font-size: 0.9rem;
+            color: #2c3e50;
+            background: #f1f5f9;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+        .mis-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #0f2b3d;
+            margin: 16px 0 8px 0;
+            background: #eef2ff;
+            display: inline-block;
+            padding: 4px 16px;
+            border-radius: 30px;
+        }
 
-file = st.file_uploader("📂 Upload Excel File", type=["xlsx"])
+        /* KPI cards grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 18px;
+            margin-bottom: 32px;
+        }
+        .kpi-card {
+            background: #f8fafc;
+            border-radius: 20px;
+            padding: 16px 18px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            border: 1px solid #e2edf2;
+        }
+        .kpi-label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: #1e4a76;
+            letter-spacing: 0.5px;
+        }
+        .kpi-value {
+            font-size: 1.9rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-top: 8px;
+            word-break: break-word;
+        }
 
-if file:
-df = pd.read_excel(file)
+        /* tables style (Excel grid) */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 24px 0;
+            font-size: 0.85rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        }
+        .data-table th {
+            background-color: #eef2ff;
+            border: 1px solid #cbd5e1;
+            padding: 10px 8px;
+            font-weight: 700;
+            color: #1e293b;
+            text-align: center;
+            font-size: 0.8rem;
+        }
+        .data-table td {
+            border: 1px solid #d4dcec;
+            padding: 8px 8px;
+            text-align: right;
+        }
+        .data-table td:first-child, .data-table th:first-child {
+            text-align: center;
+            font-weight: 500;
+        }
+        .data-table td.text-left, .data-table th.text-left {
+            text-align: left;
+        }
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            background: #e9f0f5;
+            padding: 8px 14px;
+            border-radius: 24px;
+            margin: 30px 0 12px 0;
+            display: inline-block;
+        }
+        .flex-chart-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            margin: 20px 0 10px;
+        }
+        .chart-card {
+            flex: 1;
+            min-width: 220px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            padding: 12px 16px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+        }
+        .chart-card h4 {
+            margin: 0 0 12px 0;
+            font-weight: 600;
+            font-size: 1rem;
+            border-left: 4px solid #2c6e9e;
+            padding-left: 12px;
+        }
+        .mini-bar-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .bar-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .bar-label {
+            width: 90px;
+            font-weight: 500;
+            font-size: 0.8rem;
+        }
+        .bar-bg {
+            flex: 1;
+            background-color: #e2e8f0;
+            border-radius: 20px;
+            height: 28px;
+            overflow: hidden;
+        }
+        .bar-fill {
+            background-color: #2c6e9e;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            color: white;
+            font-size: 0.7rem;
+            font-weight: bold;
+            border-radius: 20px;
+        }
+        .legend-pie {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        .pie-swatch {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border-radius: 14px;
+            margin-right: 6px;
+        }
+        .pie-value {
+            font-weight: 600;
+        }
+        .footer-note {
+            text-align: right;
+            font-size: 0.7rem;
+            color: #4b5563;
+            border-top: 1px solid #cbd5e1;
+            margin-top: 28px;
+            padding-top: 16px;
+        }
+        @media (max-width: 680px) {
+            .excel-container {
+                padding: 12px;
+            }
+            .kpi-value {
+                font-size: 1.4rem;
+            }
+            .data-table th, .data-table td {
+                padding: 5px 4px;
+                font-size: 0.7rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="excel-container">
+    <!-- Header -->
+    <div class="report-header">
+        <div class="dealership">🚗 BINAY HYUNDAI (E6233)</div>
+        <div class="date-time">📅 24-Apr-2026 &nbsp; | &nbsp; ⏱️ 2:45 PM</div>
+    </div>
+    <div>
+        <span class="mis-title">📊 Spare Parts Daily MIS Report</span>
+    </div>
 
-st.subheader("✏️ Edit Your Data")
-df = st.data_editor(df, use_container_width=True)
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">💰 Total Sale Today</div><div class="kpi-value">₹ 17,931.48</div></div>
+        <div class="kpi-card"><div class="kpi-label">📈 Total Sale MTD</div><div class="kpi-value">₹ 21,68,230.10</div></div>
+        <div class="kpi-card"><div class="kpi-label">📦 Stock Value</div><div class="kpi-value">₹ 85,27,225.00</div></div>
+        <div class="kpi-card"><div class="kpi-label">🔧 Workshop Sale</div><div class="kpi-value">₹ 11,56,707.20</div></div>
+    </div>
 
-# Auto calculations
-df["Sale Rate"] = df["Purchase Rate"] * 1.17
-df["Total Sale"] = df["Qty"] * df["Sale Rate"]
-df["Margin %"] = ((df["Sale Rate"] - df["Purchase Rate"]) / df["Sale Rate"]) * 100
+    <!-- Daily Sales Trend Table + mini chart (last 7 days) -->
+    <div>
+        <div class="section-title">📅 Daily Sales Trend (Last 7 Days)</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 24px;">
+            <table class="data-table" style="width: auto; min-width: 280px;">
+                <thead>
+                    <tr><th>Date</th><th>Sales (₹)</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>18-Apr</td><td>22,450</td></tr>
+                    <tr><td>19-Apr</td><td>22,450</td></tr>
+                    <tr><td>20-Apr</td><td>21,000</td></tr>
+                    <tr><td>21-Apr</td><td>16,000</td></tr>
+                    <tr><td>22-Apr</td><td>16,000</td></tr>
+                    <tr><td>23-Apr</td><td>15,800</td></tr>
+                    <tr><td>24-Apr</td><td>17,931</td></tr>
+                </tbody>
+            </table>
+            <div class="chart-card" style="flex:2">
+                <h4>📊 Last 7 Days Trend (₹)</h4>
+                <div class="mini-bar-container">
+                    <div class="bar-item"><span class="bar-label">18-Apr</span><div class="bar-bg"><div class="bar-fill" style="width: 100%; background:#2c6e9e;">22.4k</div></div></div>
+                    <div class="bar-item"><span class="bar-label">19-Apr</span><div class="bar-bg"><div class="bar-fill" style="width: 100%; background:#2c6e9e;">22.4k</div></div></div>
+                    <div class="bar-item"><span class="bar-label">20-Apr</span><div class="bar-bg"><div class="bar-fill" style="width: 93%; background:#2c6e9e;">21.0k</div></div></div>
+                    <div class="bar-item"><span class="bar-label">21-Apr</span><div class="bar-bg"><div class="bar-fill" style="width: 71%; background:#2c6e9e;">16.0k</div></div></div>
+                    <div class="bar-item"><span class="bar-label">22-Apr</span><div class="bar-bg"><div class="bar-fill" style="width: 71%; background:#2c6e9e;">16.0k</div></div></div>
+                    <div class="bar-item"><span class="bar-label">23-Apr</span><div class="bar-bg"><div class="bar-fill" style="width: 70%; background:#2c6e9e;">15.8k</div></div></div>
+                    <div class="bar-item"><span class="bar-label">24-Apr</span><div class="bar-bg"><div class="bar-fill" style="width: 80%; background:#2c6e9e;">17.9k</div></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-# KPI
-st.subheader("📊 Dashboard")
+    <!-- Category-wise Sale + Stock vs Sale (visual) -->
+    <div class="flex-chart-row">
+        <div class="chart-card">
+            <h4>🏷️ Category-wise Sale</h4>
+            <table style="width:100%; border-collapse: collapse;">
+                <tr><td style="padding:6px 0"><strong>Mechanical</strong></td><td style="text-align:right">₹ 53,457</td><td style="text-align:right; color:#2563eb;">46%</td></tr>
+                <tr><td style="padding:6px 0"><strong>Accessories</strong></td><td style="text-align:right">₹ 10,575</td><td style="text-align:right; color:#2563eb;">23%</td></tr>
+                <tr><td style="padding:6px 0"><strong>Lubricant</strong></td><td style="text-align:right">₹ 7,130</td><td style="text-align:right; color:#2563eb;">31%</td></tr>
+            </table>
+            <div class="legend-pie">
+                <div><span class="pie-swatch" style="background:#2c6e9e;"></span> Mechanical 46%</div>
+                <div><span class="pie-swatch" style="background:#f59e0b;"></span> Accessories 23%</div>
+                <div><span class="pie-swatch" style="background:#10b981;"></span> Lubricant 31%</div>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h4>📦 Stock vs Sale (₹)</h4>
+            <div class="mini-bar-container">
+                <div class="bar-item"><span class="bar-label">Spare Parts</span><div class="bar-bg"><div class="bar-fill" style="width: 98%; background:#1e5f8e;">Sale: 53.5k</div></div><span style="font-size:11px;">Stock diff +53k</span></div>
+                <div class="bar-item"><span class="bar-label">Accessories</span><div class="bar-bg"><div class="bar-fill" style="width: 28%; background:#f59e0b;">Sale: 10.6k</div></div><span style="font-size:11px;">Stock -1,47,500</span></div>
+                <div class="bar-item"><span class="bar-label">Lubricant</span><div class="bar-bg"><div class="bar-fill" style="width: 35%; background:#10b981;">Sale: 7.1k</div></div><span style="font-size:11px;">Stock -4,007</span></div>
+            </div>
+            <div style="margin-top: 14px; font-size: 0.75rem; background:#f1f5f9; padding: 6px; border-radius: 12px;">
+                ⚡ Spare Parts stock increased +53,457 | Accessories declined -1,47,500
+            </div>
+        </div>
+    </div>
 
-total_sale = df["Total Sale"].sum()
-total_qty = df["Qty"].sum()
-avg_margin = df["Margin %"].mean()
+    <!-- STOCK ANALYSIS TABLE (exactly as per image) -->
+    <div>
+        <div class="section-title">📋 STOCK ANALYSIS</div>
+        <table class="data-table">
+            <thead>
+                <tr><th>SN</th><th class="text-left">DETAILS</th><th>OPENING STOCK</th><th>CLOSING STOCK</th><th>STOCK DIFFERENCE</th><th>DEAD STOCK</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>1</td><td class="text-left">Spare Department</td><td>28,371,115</td><td>28,302,372</td><td style="color:green;">+53,457</td><td>1,75,870</td></tr>
+                <tr><td>2</td><td class="text-left">Spare Part</td><td>18,90,097</td><td>19,00,675</td><td style="color:green;">+10,578</td><td>1,09,097</td></tr>
+                <tr><td>3</td><td class="text-left">Accessories</td><td>7,50,300</td><td>6,02,500</td><td style="color:red;">-1,47,500</td><td style="color:red;">-1,47,500</td></tr>
+                <tr><td>4</td><td class="text-left">Lubricant</td><td>5,60,285</td><td>5,58,278</td><td style="color:red;">-4,007</td><td>66,023</td></tr>
+                <tr><td>5</td><td class="text-left">On Transit Value</td><td>3,60,450</td><td>3,60,450</td><td>0</td><td>3,60,450</td></tr>
+            </tbody>
+        </table>
+    </div>
 
-col1, col2, col3 = st.columns(3)
-col1.metric("💰 Total Sale", f"₹ {total_sale:,.0f}")
-col2.metric("📦 Total Qty", total_qty)
-col3.metric("📈 Avg Margin %", f"{avg_margin:.2f}%")
+    <!-- Sales & Incentive Details Table -->
+    <div>
+        <div class="section-title">🎯 Sales & Incentive Details</div>
+        <table class="data-table">
+            <thead>
+                <tr><th>SN</th><th class="text-left">DETAILS</th><th>TARGET</th><th>ACHIEVED</th><th>% TARGET</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>1</td><td class="text-left">Total Sale Amount</td><td>3,20,000</td><td>17,991.48</td><td>86.7%</td></tr>
+                <tr><td>2</td><td class="text-left">Total Received Amount</td><td>2,62,000</td><td>24,391.48</td><td>99.2%</td></tr>
+                <tr><td>3</td><td class="text-left">Workshop Sale</td><td>13,00,000</td><td>11,56,707</td><td>89.3%</td></tr>
+                <tr><td>4</td><td class="text-left">Total Stock Received</td><td>15,00,000</td><td>14,50,377</td><td>96.7%</td></tr>
+                <tr><td>5</td><td class="text-left">MOBIS Payment Account</td><td>5,00,000</td><td>4,10,875</td><td>92.1%</td></tr>
+                <tr><td>6</td><td class="text-left">Other Dealer Purchased Account</td><td>-</td><td>4,00,000</td><td>93.8%</td></tr>
+                <tr><td>7</td><td class="text-left">Incentive Received by MOBIS</td><td>-</td><td>1,75,000</td><td>63.6%</td></tr>
+                <tr><td>8</td><td class="text-left">Stock Received from Branch</td><td>2,25,300</td><td>1,38,000</td><td>96.7%</td></tr>
+                <tr><td>9</td><td class="text-left">Stock Received from MOBIS</td><td>5,90,000</td><td>12,00,000</td><td>98.3%</td></tr>
+                <tr><td>10</td><td class="text-left">Stock Transfer for Branch</td><td>3,20,200</td><td>15,00,000</td><td>96.1%</td></tr>
+                <tr><td>11</td><td class="text-left">Accessories Sale</td><td>3,20,200</td><td>7,52,300</td><td>75.7%</td></tr>
+            </tbody>
+        </table>
+        <div style="font-size: 0.7rem; color: #475569; margin-top: 8px; text-align:right;">*Achieved values as per original MIS report</div>
+    </div>
 
-# Charts
-st.subheader("📊 Category-wise Sales")
-cat = df.groupby("Category")["Total Sale"].sum()
+    <!-- Additional Stock value summary (visual match with original extra block) -->
+    <div style="display: flex; justify-content: space-between; flex-wrap: wrap; margin-top: 20px; background: #fefce8; border-radius: 18px; padding: 12px 18px;">
+        <div><strong>📌 Stock Value (Reiterated)</strong> ₹ 85,27,225.00</div>
+        <div><strong>🔁 Stock Difference Summary</strong> Spare Parts +53,457 | Accessories -1,47,500 | Lubricant -4,007</div>
+        <div><strong>⚙️ Workshop MTD performance:</strong> ₹ 11,56,707 / Target 13,00,000</div>
+    </div>
 
-fig1, ax1 = plt.subplots()
-cat.plot(kind="bar", ax=ax1)
-st.pyplot(fig1)
-
-# Daily trend
-if "Date" in df.columns:
-    st.subheader("📈 Daily Sales Trend")
-    df["Date"] = pd.to_datetime(df["Date"])
-    daily = df.groupby("Date")["Total Sale"].sum()
-
-    fig2, ax2 = plt.subplots()
-    daily.plot(ax=ax2)
-    st.pyplot(fig2)
-
-# Download Excel
-def convert_excel(data):
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        data.to_excel(writer, index=False)
-    return output.getvalue()
-
-excel_data = convert_excel(df)
-
-st.download_button(
-    label="⬇️ Download Processed Excel",
-    data=excel_data,
-    file_name="Binay_Hyundai_MIS.xlsx",
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-)
-
-else:
-st.info("👆 Upload Excel file to start")
+    <div class="footer-note">
+        📎 MAIN SHEET &nbsp;&nbsp;|&nbsp; Sheet2 &nbsp;|&nbsp; Sheet3 &nbsp;|&nbsp; Sheet5 &nbsp;|&nbsp; + <br>
+        Report generated: 24-Apr-2026 | Binay Hyundai MIS (Excel format replica)
+    </div>
+</div>
+</body>
+</html>
