@@ -1,0 +1,72 @@
+import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
+from io import BytesIO
+
+st.set_page_config(page_title="Binay Hyundai MIS", layout="wide")
+
+st.title("🚗 Binay Hyundai - All-in-One MIS Dashboard")
+
+Upload file
+
+file = st.file_uploader("📂 Upload Excel File", type=["xlsx"])
+
+if file:
+df = pd.read_excel(file)
+
+st.subheader("✏️ Edit Your Data")
+df = st.data_editor(df, use_container_width=True)
+
+# Auto calculations
+df["Sale Rate"] = df["Purchase Rate"] * 1.17
+df["Total Sale"] = df["Qty"] * df["Sale Rate"]
+df["Margin %"] = ((df["Sale Rate"] - df["Purchase Rate"]) / df["Sale Rate"]) * 100
+
+# KPI
+st.subheader("📊 Dashboard")
+
+total_sale = df["Total Sale"].sum()
+total_qty = df["Qty"].sum()
+avg_margin = df["Margin %"].mean()
+
+col1, col2, col3 = st.columns(3)
+col1.metric("💰 Total Sale", f"₹ {total_sale:,.0f}")
+col2.metric("📦 Total Qty", total_qty)
+col3.metric("📈 Avg Margin %", f"{avg_margin:.2f}%")
+
+# Charts
+st.subheader("📊 Category-wise Sales")
+cat = df.groupby("Category")["Total Sale"].sum()
+
+fig1, ax1 = plt.subplots()
+cat.plot(kind="bar", ax=ax1)
+st.pyplot(fig1)
+
+# Daily trend
+if "Date" in df.columns:
+    st.subheader("📈 Daily Sales Trend")
+    df["Date"] = pd.to_datetime(df["Date"])
+    daily = df.groupby("Date")["Total Sale"].sum()
+
+    fig2, ax2 = plt.subplots()
+    daily.plot(ax=ax2)
+    st.pyplot(fig2)
+
+# Download Excel
+def convert_excel(data):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        data.to_excel(writer, index=False)
+    return output.getvalue()
+
+excel_data = convert_excel(df)
+
+st.download_button(
+    label="⬇️ Download Processed Excel",
+    data=excel_data,
+    file_name="Binay_Hyundai_MIS.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
+
+else:
+st.info("👆 Upload Excel file to start")
